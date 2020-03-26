@@ -1,4 +1,4 @@
-import React, { useContext, createContext, useReducer } from 'react';
+import React, { useContext, createContext, useReducer, useEffect, useState, useLayoutEffect, useRef } from 'react';
 import './App.css';
 
 const AppContext = createContext({});
@@ -15,11 +15,11 @@ const reducer = (state, action) => {
       break;
     case 'log': {
       console.log('logUsingReducer', state.c);
-      nextState = state;
+      nextState = { ...state };
       break;
     }
     default:
-      return state;
+      nextState = { ...state };
   }
 
   console.log('reducer called', { state, action, nextState });
@@ -27,7 +27,7 @@ const reducer = (state, action) => {
   return nextState;
 };
 
-const AppContextProvider = ({ children }) => {
+const useABCReducer = () => {
   const [state, dispatch] = useReducer(reducer, { a: 0, b: 0, c: 0 });
 
   const setA = value => dispatch({ type: 'setA', value });
@@ -38,9 +38,13 @@ const AppContextProvider = ({ children }) => {
     return state;
   };
 
-  return (
-    <AppContext.Provider value={{ ...state, setA, setB, getState, logUsingReducer }}>{children}</AppContext.Provider>
-  );
+  return { ...state, setA, setB, getState, logUsingReducer };
+};
+
+const AppContextProvider = ({ children }) => {
+  const value = useABCReducer();
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 const useCLogger = () => {
@@ -48,6 +52,18 @@ const useCLogger = () => {
 
   const log = () => console.log('useCLogger', { c, getState: getState().c });
   return log;
+};
+
+const useCLoggerWithEffect = () => {
+  const { c } = useContext(AppContext);
+  const [counter, setCounter] = useState(0);
+
+  useEffect(() => {
+    console.log('useCLoggerWithEffect', c);
+  }, [counter]);
+
+  const increment = x => x + 1;
+  return () => setCounter(increment);
 };
 
 const InputA = () => {
@@ -67,10 +83,13 @@ const InputB = () => {
   console.log('render InputB');
   const { b, setB, logUsingReducer } = useContext(AppContext);
   const log = useCLogger();
+  const logWithEffect = useCLoggerWithEffect();
 
   const onChange = e => {
+    console.log('onChange');
     setB(+e.target.value);
     logUsingReducer();
+    logWithEffect();
     log();
   };
 
